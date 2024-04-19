@@ -7,7 +7,8 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 
 from config import BOT_TOKEN, DEVELOPER_ID, IS_BOT_PRIVATE
 from log import log_handling,logger,error_handler
-import tg.bot
+import tg.bot as bot
+import tg.inline as tg_inline
 
 def main() -> None:
     """Start the bot."""
@@ -21,10 +22,14 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     # Get the bot to set commands menu
-    bot = dispatcher.bot
+    tgbot = dispatcher.bot
 
     dispatcher.add_handler(CommandHandler("stats", bot.stats_command, Filters.chat(DEVELOPER_ID)))
     dispatcher.add_handler(CommandHandler("resetstats", bot.reset_stats_command, Filters.chat(DEVELOPER_ID)))
+
+    # inline 
+    for h in tg_inline.inline_handlers():
+        dispatcher.add_handler(h)
 
     if IS_BOT_PRIVATE:
         # Deny access to everyone but developer
@@ -42,7 +47,7 @@ def main() -> None:
         commands = [BotCommand("start", "Start the bot"), BotCommand("help", "Help message"),
                     BotCommand("stats", "Get bot statistics"), BotCommand("resetstats", "Reset bot statistics")]
         try:
-            bot.set_my_commands(commands, scope=BotCommandScopeChat(DEVELOPER_ID))
+            tgbot.set_my_commands(commands, scope=BotCommandScopeChat(DEVELOPER_ID))
         except telegram.error.BadRequest as exc:
             logger.warning(f"Couldn't set my commands for developer chat: {exc.message}")
 
@@ -62,7 +67,7 @@ def main() -> None:
                                           BotCommand("resetstats", "Reset bot statistics")]
         bot.set_my_commands(public_commands)
         try:
-            bot.set_my_commands(dev_commands, scope=BotCommandScopeChat(DEVELOPER_ID))
+            tgbot.set_my_commands(dev_commands, scope=BotCommandScopeChat(DEVELOPER_ID))
         except telegram.error.BadRequest as exc:
             logger.warning(f"Couldn't set my commands for developer chat: {exc.message}")
 

@@ -1,11 +1,11 @@
 import traceback
 from io import StringIO
+from typing import List
 from telegram import Update, BotCommand, BotCommandScopeChat, CallbackQuery
-from telegram.ext import Updater, CallbackContext, InlineQueryHandler
+from telegram.ext import Updater, CallbackContext, InlineQueryHandler,Filters,BaseFilter
 
 from log import log_handling,logger,error_handler
 from twitter import extract_tweet_ids, reply_media,scrape_media
-
 
 def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
@@ -87,7 +87,3 @@ def handle_message(update: Update, context: CallbackContext) -> None:
     if found_tweets and not found_media:
         log_handling(update, 'info', 'No supported media found')
         update.effective_message.reply_text('No supported media found', quote=True)
-
-
-def inline_handlers() -> [InlineQueryHandler]:
-    return [InlineQueryHandler()]

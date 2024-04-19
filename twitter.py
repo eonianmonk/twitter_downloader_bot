@@ -1,21 +1,23 @@
 import requests
-from typing import Optional
-from telegram import Update, InputMediaDocument, constants
+from typing import List, Optional
+from telegram import Update, InputMediaDocument, constants, InlineQueryResultArticle,InputMessageContent,InlineQueryResultVideo
 from log import log_handling
 from telegram.ext import CallbackContext
 try:
     import re2 as re
 except ImportError:
     import re
-from telegram.ext import CallbackContext
 import telegram.error
 from tempfile import TemporaryFile
 from urllib.parse import urlsplit
 
 def extract_tweet_ids(update: Update) -> Optional[list[str]]:
     """Extract tweet IDs from message."""
-    text = update.effective_message.text
-
+    if update.effective_message is not None:
+        text = update.effective_message.text
+    elif update.inline_query.query is not None:
+        text = update.inline_query.query
+        
     # For t.co links
     unshortened_links = ''
     for link in re.findall(r"t\.co\/[a-zA-Z0-9]+", text):
@@ -82,6 +84,40 @@ def reply_gifs(update: Update, context: CallbackContext, twitter_gifs: list[dict
         update.effective_message.reply_animation(animation=gif_url, quote=True)
         log_handling(update, 'info', 'Sent gif')
         context.bot_data['stats']['media_downloaded'] += 1
+
+
+def inline_videos(update:Update,context: CallbackContext, twitter_videos: list[dict]) -> List[InlineQueryResultArticle]:
+    articles = []
+    for video in twitter_videos:
+        video_url = video['url'] # 'https://video.twimg.com/ext_tw_video/1781026478945177600/pu/vid/avc1/1280x720/HFcgiEB20ArXRrcU.mp4?tag=12'
+        id = video_url.split('/')[-1].split('.')[0]
+        try:
+            request = requests.get(video_url, stream=True)
+            request.raise_for_status()
+            if (video_size := int(request.headers['Content-Length'])) <= constants.MAX_FILESIZE_DOWNLOAD:
+                # Try sending by url
+                articles.append(InlineQueryResultVideo(
+                    id=id,
+                    video_url=video_url,
+                    thumb_url=video['thumbnail_url'],
+                    mime_type='video/mp4',
+                    #input_message_content=InputMediaDocument(media=video_url)
+                    caption=video_url,
+                    title=video_url,
+                    description=video_url
+                    ))
+            else:
+                log_handling(update, 'info', 'Video is too large, sending direct link')
+                
+        except (requests.HTTPError, KeyError, telegram.error.BadRequest, requests.exceptions.ConnectionError) as exc:
+            log_handling(update, 'info', f'{exc.__class__.__qualname__} IQ: {exc}')
+            log_handling(update, 'info', 'Error occurred when trying to send video, sending direct link')
+            
+        context.bot_data['stats']['media_downloaded'] += 1
+    return articles
+            
+
+    return
 
 
 def reply_videos(update: Update, context: CallbackContext, twitter_videos: list[dict]):

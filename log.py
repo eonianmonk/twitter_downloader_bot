@@ -18,9 +18,13 @@ logger = logging.getLogger(__name__)
 def log_handling(update: Update, level: str, message: str) -> None:
     """Log message with chat_id and message_id."""
     _level = getattr(logging, level.upper())
-    logger.log(_level, f'[{update.effective_chat.id}:{update.effective_message.message_id}] {message}')
-
-
+    if update.inline_query is not None:
+        logger.log(_level, f'[{update.inline_query.from_user.id} IQ] {message}')
+    elif update.effective_message is not None:
+        logger.log(_level, f'[{update.effective_chat.id}:{update.effective_message.message_id}] {message}')
+    else: 
+        logger.log(_level, f'[{update.message}] {message}')
+        
 def error_handler(update: object, context: CallbackContext) -> None:
     """Log the error and send a telegram message to notify the developer."""
 
@@ -70,6 +74,6 @@ def error_handler(update: object, context: CallbackContext) -> None:
     context.bot.send_document(chat_id=DEVELOPER_ID, document=string_out, filename='error_report.txt',
                               caption='#error_report\nAn exception was raised during runtime\n')
 
-    if update:
-        error_class_name = ".".join([context.error.__class__.__module__, context.error.__class__.__qualname__])
-        update.effective_message.reply_text(f'Error\n{error_class_name}: {str(context.error)}')
+    # if update:
+    #     error_class_name = ".".join([context.error.__class__.__module__, context.error.__class__.__qualname__])
+    #     #update.effective_message.reply_text(f'Error\n{error_class_name}: {str(context.error)}')
